@@ -1,0 +1,30 @@
+###> project ###
+/.env.local
+/.env.local.php
+/.env*.local
+/public/bundles/
+/var/
+/vendor/
+###< project ###
+
+###> assets ###
+/node_modules/
+/public/build/
+npm-debug.log
+yarn-error.log
+###< assets ###
+
+composer.phar
+.phpunit.result.cache
+/public/uploads/
+
+# Docker
+.docker/data/
+
+# IDE
+/.idea/
+/.vscode/
+
+# Claude Code (personal overrides)
+.claude/settings.local.json
+CLAUDE.local.md
