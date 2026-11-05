@@ -7,11 +7,15 @@ with a profile, a logo and favicons, generated legal pages (about us, contact,
 accessibility, privacy, terms of use) and built-in SEO and AIO (AI
 optimisation). Licensed GPL-2.0-or-later.
 
-> **Status:** pre-M0. The steps below describe the target setup.
+> **Status:** M0. The application shell, development services and production
+> image work today. The installer, the admin and the features below arrive
+> with the core's milestones; until the core ships `sightpress:install`, the
+> Composer hook prints that the command isn't there yet and carries on.
 
 This repository is the **deployable project** (`sightpress/skeleton`). It holds
 only the application shell, its configuration and Docker support. The product
-itself comes from Composer packages: `sightpress/core` and the official plugins.
+itself comes from Composer packages: `sightpress/core`, plus whichever official
+plugins you choose to install.
 
 ## Install
 
@@ -27,12 +31,18 @@ docker compose up -d        # Postgres, Mailpit, MinIO (development)
 composer install
 ```
 
+The development services listen on this machine only: PostgreSQL on port
+5432, Mailpit on 1025 (read the mail at http://localhost:8025) and MinIO on
+9000 (console at http://localhost:9001). Their credentials are in
+`compose.yaml` and are for development only.
+
 When `composer install` finishes, it runs `php bin/console sightpress:install`,
 which asks for:
 
-1. **System setup:** environment (prod or dev), database, mail, media storage
-   and delivery, the super-admin account, and which installed plugins sites may
-   use.
+1. **System setup:** environment (prod or dev), database, mail, which official
+   plugins to install (it lists them all with what each does; none is
+   installed unless you choose it), media storage and delivery, the
+   super-admin account, and which installed plugins sites may use.
 2. **Your first site:** name, domain, languages and fallbacks, owner, site
    profile (who runs the site and how to reach them), logo and favicon (or a
    generated one), theme preset, media hostname, which plugins to turn on, and
@@ -69,8 +79,6 @@ with the generic option.
 - Set up or change a CDN later with `php bin/console sightpress:cdn:setup`, or in
   Admin → System → Storage and CDN.
 
-See `PLAN.md` §3.4 for the full specification.
-
 ### Email and notifications
 
 SightPress always sends the email an install needs (invitations, password
@@ -94,8 +102,6 @@ how, in their notification preferences.
   `php bin/console sightpress:notifications:setup`, or in Admin → System →
   Notifications; the installer lists this command as a next step.
 
-See `PLAN.md` §5.14 for the full specification.
-
 ## Finding images
 
 The official **image-finder** plugin lets creators search free and paid image
@@ -113,15 +119,19 @@ licence. Turn it on per site in Admin → Plugins.
 - Each site chooses its providers, which licences it accepts, and a monthly
   spending limit for paid images.
 
-See `PLAN.md` §5.18 for the full specification.
-
 ## Docker
 
 - `compose.yaml` runs the development services: PostgreSQL, Mailpit and MinIO
   (S3-compatible storage).
-- `Dockerfile` builds the production image (PHP with OPcache and preloading,
-  the web server, and the background worker and scheduler as separate services
-  in `compose.prod.yaml`). The image build never runs the installer; run
+- `Dockerfile` builds the production image: PHP with OPcache and preloading,
+  served by FrankenPHP (with automatic HTTPS), running as an unprivileged
+  user, with a health check. Add official plugins at build time with
+  `--build-arg SIGHTPRESS_PLUGINS="forms notifications"`.
+- `compose.prod.yaml` runs the image with PostgreSQL. Set `SERVER_NAME` (your
+  domain), `APP_SECRET` and `POSTGRES_PASSWORD`, then run
+  `docker compose -f compose.prod.yaml up -d`. The background worker and
+  scheduler services arrive with the core's background jobs.
+- The image build never runs the installer; run
   `php bin/console sightpress:install` in the container, or give the answers as
   `SIGHTPRESS_*` environment variables and Docker secrets (`*_FILE`).
 
@@ -138,8 +148,17 @@ the skeleton files themselves (Docker or config).
 
 ## Plugins
 
-The official plugins are installed by default and off on every new site. Turn
-them on per site in Admin → Plugins. Remove one with `composer remove
+No plugin is installed by default. During installation you're told which
+official plugins exist, with a sentence on what each does, and asked which to
+install and which to turn on for your first site. You can add one later:
+
+```bash
+php bin/console sightpress:plugin:list            # what's installed, and what isn't
+php bin/console sightpress:plugin:install forms   # add an official plugin
+```
+
+Turn installed plugins on per site in Admin → Plugins. Remove one with
+`php bin/console sightpress:plugin:uninstall <id>` and `composer remove
 sightpress/plugin-<id>`, or add a third-party plugin with `composer require`.
 
 ## Security and performance
@@ -151,6 +170,15 @@ performance budgets checked in CI. Before going live, run
 `php bin/console sightpress:security:check`, which reports each check as
 "Passed" or "Failed".
 
-To report a vulnerability, follow `SECURITY.md` (added in M0); please don't
-open a public issue. See `PLAN.md` §3.5 (security) and §3.6
-(performance) for the full specification.
+To report a vulnerability, follow `SECURITY.md`; please don't open a public
+issue.
+
+## Development
+
+To work on SightPress itself, check out `plugin-core`, `core` and the official
+plugins next to this repository, then use their local copies:
+
+```bash
+COMPOSER=composer.dev.json composer install
+composer qa                 # tests, static analysis, coding standard, licences, audit
+```

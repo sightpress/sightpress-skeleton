@@ -28,3 +28,27 @@ composer.phar
 # Claude Code (personal overrides)
 .claude/settings.local.json
 CLAUDE.local.md
+
+# SightPress
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/config/reference.php
+/public/bundles/
+/public/assets/
+/assets/vendor/
+/var/
+/node_modules/
+/playwright-report/
+/test-results/
+/phpunit.xml
+/.phpunit.cache/
+/.phpunit.result.cache
+/.php-cs-fixer.php
+/.php-cs-fixer.cache
+/phpstan.neon
+/.rector.cache
+/.deptrac.cache
+# Path repositories point at this machine's sibling checkouts.
+/composer.dev.lock

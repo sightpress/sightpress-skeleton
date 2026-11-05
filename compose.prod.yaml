@@ -1,0 +1,59 @@
+# Production: docker compose -f compose.prod.yaml up -d
+#
+# Give the values in an .env file next to this one, or in the environment:
+#   SERVER_NAME        the site's domain (Caddy gets its HTTPS certificate)
+#   APP_SECRET         a long random string (php -r "echo bin2hex(random_bytes(32));")
+#   POSTGRES_PASSWORD  the database password
+# Then finish the install inside the container:
+#   docker compose -f compose.prod.yaml exec web php bin/console sightpress:install
+name: sightpress
+
+services:
+  web:
+    image: ${SIGHTPRESS_IMAGE:-ghcr.io/sightpress/sightpress-skeleton:latest}
+    build:
+      context: .
+      args:
+        SIGHTPRESS_PLUGINS: ${SIGHTPRESS_PLUGINS:-}
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      SERVER_NAME: ${SERVER_NAME:?Set SERVER_NAME to the site domain}
+      APP_SECRET: ${APP_SECRET:?Set APP_SECRET to a long random string}
+      DATABASE_URL: postgresql://sightpress:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@database:5432/sightpress?serverVersion=17&charset=utf8
+      MAILER_DSN: ${MAILER_DSN:-null://null}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+      - app_share:/app/var/share
+
+  database:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sightpress
+      POSTGRES_USER: sightpress
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-d', 'sightpress', '-U', 'sightpress']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    volumes:
+      - database_data:/var/lib/postgresql/data:rw
+
+  # The background worker and scheduler services arrive with the core's
+  # background jobs (Messenger and Scheduler).
+
+volumes:
+  caddy_data:
+  caddy_config:
+  app_share:
+  database_data:

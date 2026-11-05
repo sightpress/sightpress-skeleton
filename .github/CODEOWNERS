@@ -1,0 +1,4 @@
+* @sightpress/maintainers
+/.github/ @sightpress/maintainers
+/release-please-config.json @sightpress/maintainers
+/.release-please-manifest.json @sightpress/maintainers
