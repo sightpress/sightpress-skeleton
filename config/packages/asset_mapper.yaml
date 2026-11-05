@@ -1,0 +1,10 @@
+framework:
+  asset_mapper:
+    # The core and plugins add their own asset paths.
+    paths: []
+    missing_import_mode: strict
+
+when@prod:
+  framework:
+    asset_mapper:
+      missing_import_mode: warn

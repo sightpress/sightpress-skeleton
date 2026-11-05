@@ -1,0 +1,50 @@
+# Development services. Start them with "docker compose up -d", then run the
+# app with "symfony serve -d". The credentials below are for development only.
+name: sightpress
+
+services:
+  database:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: sightpress
+      POSTGRES_USER: sightpress
+      POSTGRES_PASSWORD: sightpress
+    ports:
+      - '127.0.0.1:5432:5432'
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-d', 'sightpress', '-U', 'sightpress']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    volumes:
+      - database_data:/var/lib/postgresql/data:rw
+
+  # Catches every email the app sends. Read them at http://localhost:8025
+  mailer:
+    image: axllent/mailpit:v1.27
+    ports:
+      - '127.0.0.1:1025:1025'
+      - '127.0.0.1:8025:8025'
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+  # MinIO, S3-compatible storage for trying cloud media storage locally
+  # (MinIO no longer publishes images; this is Chainguard's maintained build).
+  # Console at http://localhost:9001 (user sightpress, password sightpress-dev).
+  storage:
+    image: chainguard/minio:latest
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: sightpress
+      MINIO_ROOT_PASSWORD: sightpress-dev
+    ports:
+      - '127.0.0.1:9000:9000'
+      - '127.0.0.1:9001:9001'
+    volumes:
+      - storage_data:/data:rw
+
+volumes:
+  database_data:
+  storage_data:

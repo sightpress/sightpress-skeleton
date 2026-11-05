@@ -1,0 +1,3 @@
+doctrine_migrations:
+  # The core and each plugin register their own migration paths.
+  enable_profiler: false

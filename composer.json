@@ -1,0 +1,121 @@
+{
+  "name": "sightpress/skeleton",
+  "description": "Create a new SightPress site: a powerful multi-site, multi-language CMS for everyone, designed with blind and low-vision content creators and audiences in mind. Written in modern, object-oriented PHP.",
+  "type": "project",
+  "license": "GPL-2.0-or-later",
+  "homepage": "https://github.com/sightpress/sightpress-skeleton",
+  "keywords": [
+    "cms",
+    "accessibility",
+    "a11y",
+    "multi-site",
+    "multilingual"
+  ],
+  "require": {
+    "php": "^8.4",
+    "ext-ctype": "*",
+    "ext-iconv": "*",
+    "sightpress/core": "^1.0.1",
+    "symfony/asset-mapper": "^8.1",
+    "symfony/dotenv": "^8.1",
+    "symfony/flex": "^2.5",
+    "symfony/runtime": "^8.1"
+  },
+  "require-dev": {
+    "deptrac/deptrac": "^4.0",
+    "friendsofphp/php-cs-fixer": "^3.64",
+    "phpstan/extension-installer": "^1.4",
+    "phpstan/phpstan": "^2.1",
+    "phpstan/phpstan-phpunit": "^2.0",
+    "phpunit/phpunit": "^13.0",
+    "rector/rector": "^2.0",
+    "symfony/browser-kit": "^8.1"
+  },
+  "suggest": {
+    "sightpress/plugin-articles": "Articles, categories, tags, archives and feeds.",
+    "sightpress/plugin-community": "Comments, likes, share links and saved pages.",
+    "sightpress/plugin-forms": "Accessible forms.",
+    "sightpress/plugin-newsletter": "Accessible email newsletters.",
+    "sightpress/plugin-notifications": "Delivers notifications by email, push and text message.",
+    "sightpress/plugin-image-finder": "Finding and adding images, with their credits and licences.",
+    "sightpress/plugin-ai": "Optional AI assistance, with your own provider key; every draft is reviewed by a person.",
+    "sightpress/plugin-import": "Importing content."
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "App\\Tests\\": "tests/"
+    }
+  },
+  "config": {
+    "sort-packages": true,
+    "optimize-autoloader": true,
+    "preferred-install": {
+      "*": "dist"
+    },
+    "bump-after-update": false,
+    "allow-plugins": {
+      "phpstan/extension-installer": true,
+      "symfony/flex": true,
+      "symfony/runtime": true
+    }
+  },
+  "extra": {
+    "branch-alias": {
+      "dev-main": "1.0.x-dev"
+    },
+    "symfony": {
+      "allow-contrib": false,
+      "require": "8.1.*"
+    }
+  },
+  "scripts": {
+    "auto-scripts": {
+      "cache:clear": "symfony-cmd",
+      "assets:install %PUBLIC_DIR%": "symfony-cmd",
+      "importmap:install": "symfony-cmd"
+    },
+    "sightpress:install": [
+      "Composer\\Config::disableProcessTimeout",
+      "@php bin/console sightpress:install --from-composer || exit 0"
+    ],
+    "post-install-cmd": [
+      "@auto-scripts",
+      "@sightpress:install"
+    ],
+    "post-update-cmd": [
+      "@auto-scripts"
+    ],
+    "test": "phpunit",
+    "test:coverage": [
+      "XDEBUG_MODE=coverage phpunit --coverage-clover var/coverage/clover.xml",
+      "@php vendor/bin/sightpress-check-coverage var/coverage/clover.xml"
+    ],
+    "stan": "phpstan analyse --memory-limit=1G",
+    "cs": "php-cs-fixer fix --dry-run --diff",
+    "cs:fix": "php-cs-fixer fix",
+    "rector": "rector process --dry-run",
+    "deptrac": "deptrac analyse --no-progress",
+    "check:licenses": "@php vendor/bin/sightpress-check-licenses",
+    "lint:twig": "@php -r \"echo is_dir('templates') ? '' : 'No templates in the skeleton: product templates live in sightpress/core and the plugins. Passed', PHP_EOL; exit(is_dir('templates') ? 1 : 0);\"",
+    "qa": [
+      "@test:coverage",
+      "@stan",
+      "@cs",
+      "@rector",
+      "@deptrac",
+      "@lint:twig",
+      "@check:licenses",
+      "@composer audit"
+    ]
+  },
+  "conflict": {
+    "symfony/symfony": "*"
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}

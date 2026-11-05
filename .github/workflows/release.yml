@@ -1,0 +1,19 @@
+name: Release
+
+on:
+  push:
+    branches: [main, 'next', '[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    uses: sightpress/.github/.github/workflows/release.yml@main
+    with:
+      package: sightpress/skeleton
+    secrets: inherit

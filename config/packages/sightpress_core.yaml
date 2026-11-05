@@ -1,0 +1,7 @@
+# SightPress core settings for this install. The installer writes the sites
+# and their domains; until then, development hosts (localhost) work in debug
+# mode and every other host gets a 404.
+sightpress_core:
+  # Proxies or load balancers in front of this server, as explicit addresses
+  # or CIDR ranges. Trusting every address is refused.
+  trusted_proxies: []

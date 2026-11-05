@@ -1,0 +1,6 @@
+# Services of this install. The SightPress core and plugins bring their own:
+# only add services here for local customisations.
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true

@@ -1,0 +1,69 @@
+name: CI
+
+# The skeleton holds no product code (CLAUDE.md): its suite checks that the
+# app boots on the released core, the Composer hook, the dev manifest and the
+# Docker files, and the image job builds and smoke-tests the production image.
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'next', '[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+
+jobs:
+  pr-title:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conventional Commits title (PRs are squash-merged)
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if ! printf '%s' "$TITLE" | grep -Eq '^(feat|fix|perf|refactor|docs|test|ci|build|chore|revert)(\([a-z0-9._-]+\))?!?: .+'; then
+            echo "::error::The pull request title must follow Conventional Commits, for example 'fix: handle empty alt text'."
+            exit 1
+          fi
+
+  qa:
+    uses: sightpress/.github/.github/workflows/php-qa.yml@main
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Build the production image
+        run: docker build --tag sightpress:ci .
+      - name: Serve a request as an unprivileged user
+        run: |
+          docker run --detach --name sightpress -e SERVER_NAME=:80 -e APP_SECRET=ci-only -p 127.0.0.1:8080:80 sightpress:ci
+          for attempt in $(seq 1 30); do
+            if curl --silent --output /dev/null http://127.0.0.1:8080/; then break; fi
+            sleep 1
+          done
+          headers=$(curl --silent --dump-header - --output /dev/null -H 'Host: unknown.example' http://127.0.0.1:8080/)
+          printf '%s\n' "$headers"
+          printf '%s' "$headers" | grep -q '^HTTP/1.1 404' || { echo "::error::An unknown host must get a 404."; exit 1; }
+          printf '%s' "$headers" | grep -qi '^content-security-policy:' || { echo "::error::The security headers are missing."; exit 1; }
+          [ "$(docker exec sightpress id -u)" != "0" ] || { echo "::error::The image must not run as root."; exit 1; }
+          echo "Passed: the image serves requests with the security headers, as an unprivileged user."
+      - if: always()
+        run: docker logs sightpress || true
+
+  # The one required status check for branch protection.
+  qa-gate:
+    if: always()
+    needs: [pr-title, qa, image]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every required job passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          for result in $RESULTS; do
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "::error::A required job finished with: $result"
+              exit 1
+            fi
+          done

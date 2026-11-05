@@ -1,0 +1,21 @@
+# The skeleton holds no product code (CLAUDE.md): its only class is the
+# Kernel, which may use the core kernel and nothing else from SightPress.
+# Product code belongs in sightpress/core or a plugin.
+deptrac:
+  paths:
+    - ./src
+  layers:
+    - name: App
+      collectors:
+        - { type: classLike, value: '^App\\.*' }
+    - name: CoreKernel
+      collectors:
+        - { type: classLike, value: '^SightPress\\Core\\Kernel\\CoreKernel$' }
+    - name: SightPress
+      collectors:
+        - { type: bool, must: [{ type: classLike, value: '^SightPress\\.*' }], must_not: [{ type: classLike, value: '^SightPress\\Core\\Kernel\\CoreKernel$' }] }
+  ruleset:
+    App: [CoreKernel]
+    CoreKernel: ~
+    SightPress: ~
+  cache_file: ./var/.deptrac.cache
