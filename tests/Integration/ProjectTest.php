@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use Composer\InstalledVersions;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Yaml\Yaml;
@@ -16,14 +17,14 @@ use Symfony\Component\Yaml\Yaml;
 final class ProjectTest extends TestCase
 {
     private const array OFFICIAL_PLUGINS = [
-        'sightpress/plugin-ai',
+        'sightpress/plugin-ai-helper',
         'sightpress/plugin-articles',
-        'sightpress/plugin-community',
-        'sightpress/plugin-forms',
+        'sightpress/plugin-community-helper',
+        'sightpress/plugin-file-importer',
+        'sightpress/plugin-form-builder',
         'sightpress/plugin-image-finder',
-        'sightpress/plugin-import',
-        'sightpress/plugin-newsletter',
-        'sightpress/plugin-notifications',
+        'sightpress/plugin-newsletter-manager',
+        'sightpress/plugin-notifications-helper',
     ];
 
     private static function root(): string
@@ -89,10 +90,72 @@ final class ProjectTest extends TestCase
         $scripts = self::section(self::json('composer.json'), 'scripts');
 
         self::assertSame(['@auto-scripts', '@sightpress:install'], $scripts['post-install-cmd']);
-        self::assertSame([
-            'Composer\Config::disableProcessTimeout',
-            '@php bin/console sightpress:install --from-composer || exit 0',
-        ], $scripts['sightpress:install']);
+        self::assertSame(['Composer\Config::disableProcessTimeout', '@php bin/install-hook'], $scripts['sightpress:install']);
+        self::assertSame($scripts['sightpress:install'], self::section(self::json('composer.dev.json'), 'scripts')['sightpress:install']);
+    }
+
+    /**
+     * Runs the hook as Composer does, without a terminal.
+     *
+     * @param list<string>          $arguments
+     * @param array<string, string> $env
+     */
+    private static function hook(array $arguments = [], array $env = []): Process
+    {
+        $process = new Process([\PHP_BINARY, 'bin/install-hook', ...$arguments], self::root(), ['APP_ENV' => 'test', 'SIGHTPRESS_SKIP_INSTALL' => '', ...$env]);
+        $process->setInput('');
+        $process->run();
+
+        return $process;
+    }
+
+    public function testUnderComposerTheInstallerExitsZeroWithTheNextSteps(): void
+    {
+        $process = self::hook(env: ['COMPOSER_NO_INTERACTION' => '1']);
+        $output = $process->getOutput();
+
+        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput());
+        self::assertStringContainsString('SightPress isn\'t set up yet. There is no terminal to ask questions in, so the installer didn\'t run.', $output);
+        self::assertStringContainsString('To finish the install, run: php bin/console sightpress:install', $output);
+        if (\count(InstalledVersions::getInstalledPackagesByType('sightpress-plugin')) < 8) {
+            self::assertStringContainsString('Install it with: php bin/console sightpress:plugin:install', $output);
+        } else {
+            // composer.dev.json installs every official plugin: their set-up commands are the next steps.
+            self::assertStringContainsString('Set up Notifications helper\'s install-wide settings: php bin/console sightpress:notifications-helper:setup', $output);
+        }
+        self::assertStringNotContainsString('Failed', $output);
+    }
+
+    public function testTheHookCanBeSkipped(): void
+    {
+        $process = self::hook(env: ['SIGHTPRESS_SKIP_INSTALL' => '1']);
+
+        self::assertSame(0, $process->getExitCode());
+        self::assertSame("SightPress installer skipped, because SIGHTPRESS_SKIP_INSTALL is 1. When you are ready, run: php bin/console sightpress:install\n", $process->getOutput());
+    }
+
+    public function testAnInstallerThatStopsIsReportedInWordsAndNeverFailsComposer(): void
+    {
+        $console = sys_get_temp_dir().'/sightpress-console-'.bin2hex(random_bytes(4));
+        file_put_contents($console, "<?php\nfwrite(STDERR, \"Command \\\"sightpress:install\\\" is not defined.\\n\");\nexit(1);\n");
+        try {
+            $process = self::hook([$console]);
+        } finally {
+            unlink($console);
+        }
+
+        self::assertSame(0, $process->getExitCode());
+        self::assertStringContainsString('Command "sightpress:install" is not defined.', $process->getErrorOutput(), 'The reason is passed through, not hidden.');
+        self::assertStringContainsString('Failed: the SightPress installer stopped with exit code 1, for the reason printed above.', $process->getOutput());
+        self::assertStringContainsString('Fix the problem, then run: php bin/console sightpress:install', $process->getOutput());
+    }
+
+    public function testAMissingConsoleIsReportedInWords(): void
+    {
+        $process = self::hook(['/nonexistent/console']);
+
+        self::assertSame(0, $process->getExitCode());
+        self::assertStringContainsString('Failed: the SightPress installer could not start, because /nonexistent/console is missing.', $process->getOutput());
     }
 
     public function testTheDevelopmentManifestUsesEverySiblingCheckout(): void

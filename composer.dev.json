@@ -27,28 +27,28 @@
     },
     {
       "type": "path",
-      "url": "../plugin-community",
+      "url": "../plugin-community-helper",
       "options": {
         "symlink": true
       }
     },
     {
       "type": "path",
-      "url": "../plugin-forms",
+      "url": "../plugin-form-builder",
       "options": {
         "symlink": true
       }
     },
     {
       "type": "path",
-      "url": "../plugin-newsletter",
+      "url": "../plugin-newsletter-manager",
       "options": {
         "symlink": true
       }
     },
     {
       "type": "path",
-      "url": "../plugin-notifications",
+      "url": "../plugin-notifications-helper",
       "options": {
         "symlink": true
       }
@@ -62,14 +62,14 @@
     },
     {
       "type": "path",
-      "url": "../plugin-ai",
+      "url": "../plugin-ai-helper",
       "options": {
         "symlink": true
       }
     },
     {
       "type": "path",
-      "url": "../plugin-import",
+      "url": "../plugin-file-importer",
       "options": {
         "symlink": true
       }
@@ -80,15 +80,15 @@
     "ext-ctype": "*",
     "ext-iconv": "*",
     "sightpress/core": "*@dev",
-    "sightpress/plugin-ai": "*@dev",
+    "sightpress/plugin-ai-helper": "*@dev",
     "sightpress/plugin-articles": "*@dev",
-    "sightpress/plugin-community": "*@dev",
-    "sightpress/plugin-core": "dev-main as 1.1.x-dev",
-    "sightpress/plugin-forms": "*@dev",
+    "sightpress/plugin-community-helper": "*@dev",
+    "sightpress/plugin-core": "dev-main as 1.2.x-dev",
+    "sightpress/plugin-file-importer": "*@dev",
+    "sightpress/plugin-form-builder": "*@dev",
     "sightpress/plugin-image-finder": "*@dev",
-    "sightpress/plugin-import": "*@dev",
-    "sightpress/plugin-newsletter": "*@dev",
-    "sightpress/plugin-notifications": "*@dev",
+    "sightpress/plugin-newsletter-manager": "*@dev",
+    "sightpress/plugin-notifications-helper": "*@dev",
     "symfony/asset-mapper": "^8.1",
     "symfony/dotenv": "^8.1",
     "symfony/flex": "^2.5",
@@ -144,7 +144,7 @@
     },
     "sightpress:install": [
       "Composer\\Config::disableProcessTimeout",
-      "@php bin/console sightpress:install --from-composer || exit 0"
+      "@php bin/install-hook"
     ],
     "post-install-cmd": [
       "@auto-scripts",

@@ -15,7 +15,7 @@
     "php": "^8.4",
     "ext-ctype": "*",
     "ext-iconv": "*",
-    "sightpress/core": "^1.0.1",
+    "sightpress/core": "^1.1",
     "symfony/asset-mapper": "^8.1",
     "symfony/dotenv": "^8.1",
     "symfony/flex": "^2.5",
@@ -33,13 +33,13 @@
   },
   "suggest": {
     "sightpress/plugin-articles": "Articles, categories, tags, archives and feeds.",
-    "sightpress/plugin-community": "Comments, likes, share links and saved pages.",
-    "sightpress/plugin-forms": "Accessible forms.",
-    "sightpress/plugin-newsletter": "Accessible email newsletters.",
-    "sightpress/plugin-notifications": "Delivers notifications by email, push and text message.",
-    "sightpress/plugin-image-finder": "Finding and adding images, with their credits and licences.",
-    "sightpress/plugin-ai": "Optional AI assistance, with your own provider key; every draft is reviewed by a person.",
-    "sightpress/plugin-import": "Importing content."
+    "sightpress/plugin-community-helper": "Comments, likes, share links and saved pages, moderated and accessible.",
+    "sightpress/plugin-form-builder": "Accessible forms and submissions, with spam protection that never uses CAPTCHAs.",
+    "sightpress/plugin-newsletter-manager": "Accessible email newsletters, subscriber lists and an issue archive.",
+    "sightpress/plugin-notifications-helper": "Notifications by email, browser push and text message, as each person prefers.",
+    "sightpress/plugin-image-finder": "Find free and paid images, with their credits and licences recorded.",
+    "sightpress/plugin-ai-helper": "Optional AI drafts for descriptions and SEO, with your own provider key; a person reviews every draft.",
+    "sightpress/plugin-file-importer": "Imports Markdown and DOCX files into pages."
   },
   "autoload": {
     "psr-4": {
@@ -81,7 +81,7 @@
     },
     "sightpress:install": [
       "Composer\\Config::disableProcessTimeout",
-      "@php bin/console sightpress:install --from-composer || exit 0"
+      "@php bin/install-hook"
     ],
     "post-install-cmd": [
       "@auto-scripts",

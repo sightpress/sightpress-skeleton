@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace App\Tests\Integration;
 
 use App\Kernel;
+use App\Tests\PluginsEnabledKernel;
+use Composer\InstalledVersions;
 use SightPress\Core\SightPressCoreBundle;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\Console\Tester\ApplicationTester;
 use Symfony\Component\DependencyInjection\Kernel\BundleInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Bundle\BundleAdapter;
+use Symfony\Component\HttpKernel\KernelInterface;
 
 final class KernelTest extends KernelTestCase
 {
@@ -18,7 +23,7 @@ final class KernelTest extends KernelTestCase
     {
         $kernel = self::bootKernel();
 
-        self::assertInstanceOf(Kernel::class, $kernel);
+        self::assertInstanceOf('enabled' === $_SERVER['SIGHTPRESS_TEST_PLUGINS'] ? PluginsEnabledKernel::class : Kernel::class, $kernel);
         self::assertSame(\dirname(__DIR__, 2), $kernel->getProjectDir());
 
         // Symfony wraps the bundles it registers itself (ServicesBundle, ConsoleBundle) in an adapter.
@@ -32,14 +37,67 @@ final class KernelTest extends KernelTestCase
         self::assertCount(\count(array_unique($bundles)), $bundles);
     }
 
-    public function testNoPluginIsInstalledByDefault(): void
-    {
-        $kernel = self::bootKernel();
+    /** The official plugin bundles, once sightpress:plugin:install or composer.dev.json has installed them. */
+    private const array OFFICIAL_PLUGIN_BUNDLES = [
+        'SightPress\Plugin\AiHelper\AiHelperPlugin',
+        'SightPress\Plugin\Articles\ArticlesPlugin',
+        'SightPress\Plugin\CommunityHelper\CommunityHelperPlugin',
+        'SightPress\Plugin\FileImporter\FileImporterPlugin',
+        'SightPress\Plugin\FormBuilder\FormBuilderPlugin',
+        'SightPress\Plugin\ImageFinder\ImageFinderPlugin',
+        'SightPress\Plugin\NewsletterManager\NewsletterManagerPlugin',
+        'SightPress\Plugin\NotificationsHelper\NotificationsHelperPlugin',
+    ];
 
+    /** @return list<string> */
+    private static function pluginBundlesOf(KernelInterface $kernel): array
+    {
+        $plugins = [];
         foreach ($kernel->getBundles() as $bundle) {
-            $bundle = $bundle instanceof BundleAdapter ? $bundle->getInnerBundle() : $bundle;
-            self::assertStringStartsNotWith('SightPress\Plugin\\', $bundle::class);
+            $class = ($bundle instanceof BundleAdapter ? $bundle->getInnerBundle() : $bundle)::class;
+            if (str_starts_with($class, 'SightPress\\Plugin\\')) {
+                $plugins[] = $class;
+            }
         }
+        sort($plugins);
+
+        return $plugins;
+    }
+
+    public function testWithEveryPluginDisabledNoPluginBundleIsLoaded(): void
+    {
+        if ('disabled' !== $_SERVER['SIGHTPRESS_TEST_PLUGINS']) {
+            self::markTestSkipped('Runs in the "every plugin disabled" build (SIGHTPRESS_TEST_PLUGINS=disabled).');
+        }
+
+        self::assertSame([], self::pluginBundlesOf(self::bootKernel()));
+    }
+
+    public function testWithEveryPluginEnabledEachInstalledPluginIsLoadedAndTheAppStillWorks(): void
+    {
+        if ('enabled' !== $_SERVER['SIGHTPRESS_TEST_PLUGINS']) {
+            self::markTestSkipped('Runs in the "every official plugin enabled" build (SIGHTPRESS_TEST_PLUGINS=enabled).');
+        }
+
+        $kernel = self::bootKernel();
+        self::assertSame(PluginsEnabledKernel::pluginBundles(), self::pluginBundlesOf($kernel));
+        if ([] !== InstalledVersions::getInstalledPackagesByType('sightpress-plugin')) {
+            // The integration build installs every official plugin from the sibling checkouts.
+            self::assertSame(self::OFFICIAL_PLUGIN_BUNDLES, array_values(array_intersect(self::OFFICIAL_PLUGIN_BUNDLES, self::pluginBundlesOf($kernel))));
+        }
+        self::assertSame(404, self::handle('http://attacker.example/')->getStatusCode());
+    }
+
+    public function testThePluginListNamesWhatIsInstalledAndWhatIsNot(): void
+    {
+        $application = new Application(self::bootKernel());
+        $application->setAutoExit(false);
+        $tester = new ApplicationTester($application);
+
+        self::assertSame(0, $tester->run(['command' => 'sightpress:plugin:list']));
+        $installed = \count(InstalledVersions::getInstalledPackagesByType('sightpress-plugin'));
+        self::assertStringContainsString(0 === $installed ? 'Installed plugins: none.' : \sprintf('Installed plugins (%d):', $installed), $tester->getDisplay());
+        self::assertStringContainsString(8 === $installed ? 'Every official plugin is installed.' : 'Install it with: php bin/console sightpress:plugin:install', $tester->getDisplay());
     }
 
     public function testAnUnknownHostGetsA404WithTheSecurityHeaders(): void
