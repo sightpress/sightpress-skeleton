@@ -1,0 +1,38 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Composer's post-install-cmd: runs the SightPress installer (sightpress:install
+// --from-composer), attached to this terminal so it can ask its questions.
+// It never fails or hangs Composer, and it never hides a problem either: when
+// the installer can't run or stops, it says so in words, with the command
+// that finishes the set-up. SIGHTPRESS_SKIP_INSTALL=1 skips it.
+//
+// Usage: php bin/install-hook [path/to/console]
+
+const FINISH = 'php bin/console sightpress:install';
+
+$console = $argv[1] ?? __DIR__.'/console';
+
+if ('1' === getenv('SIGHTPRESS_SKIP_INSTALL')) {
+    echo 'SightPress installer skipped, because SIGHTPRESS_SKIP_INSTALL is 1. When you are ready, run: '.FINISH.\PHP_EOL;
+    exit(0);
+}
+
+if (!is_file($console)) {
+    echo "Failed: the SightPress installer could not start, because $console is missing.".\PHP_EOL;
+    echo 'Your project files are in place. Restore bin/console from the skeleton, then run: '.FINISH.\PHP_EOL;
+    exit(0);
+}
+
+$process = proc_open([\PHP_BINARY, $console, 'sightpress:install', '--from-composer'], [\STDIN, \STDOUT, \STDERR], $pipes);
+$code = false === $process ? 127 : proc_close($process);
+
+if (0 !== $code) {
+    echo \PHP_EOL.sprintf('Failed: the SightPress installer stopped with exit code %d, for the reason printed above.', $code).\PHP_EOL;
+    echo 'Composer finished, and your project files are in place. Fix the problem, then run: '.FINISH.\PHP_EOL;
+}
+
+// Composer must never fail because of the installer (PLAN §3.4).
+exit(0);

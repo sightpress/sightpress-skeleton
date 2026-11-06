@@ -3,7 +3,7 @@
 A powerful multi-site, multi-language CMS for everyone, designed with blind and
 low-vision content creators and audiences who use assistive technology in mind.
 Written in modern, object-oriented PHP. Every site comes
-with a profile, a logo and favicons, generated legal pages (about us, contact,
+with a profile, a logo and favicons, a home page, generated legal pages (about us, contact,
 accessibility, privacy, terms of use) and built-in SEO and AIO (AI
 optimisation). Licensed GPL-2.0-or-later.
 
@@ -45,9 +45,10 @@ which asks for:
    super-admin account, and which installed plugins sites may use.
 2. **Your first site:** name, domain, languages and fallbacks, owner, site
    profile (who runs the site and how to reach them), logo and favicon (or a
-   generated one), theme preset, media hostname, which plugins to turn on, and
-   an optional home page. The five legal pages are created from the profile; review them before
-   launch.
+   generated one), theme preset, media hostname and
+   which plugins to turn on. The home page and the five legal pages are always created (the
+   legal pages from the profile); review them before launch. The home page can be edited or
+   replaced by another page, but never removed.
 
 The installer works with screen readers: one plain-text question at a time,
 defaults stated in words, numbered choices and progress shown as text.
@@ -99,7 +100,7 @@ how, in their notification preferences.
   `TWILIO_AUTH_TOKEN`, or `SIGHTPRESS_SMS_DSN`) or `*_FILE` variables. Each site
   can limit which notifications use SMS and how many it sends each month.
 - Both are off by default. Set them up with
-  `php bin/console sightpress:notifications:setup`, or in Admin → System →
+  `php bin/console sightpress:notifications-helper:setup`, or in Admin → System →
   Notifications; the installer lists this command as a next step.
 
 ## Finding images
@@ -154,7 +155,7 @@ install and which to turn on for your first site. You can add one later:
 
 ```bash
 php bin/console sightpress:plugin:list            # what's installed, and what isn't
-php bin/console sightpress:plugin:install forms   # add an official plugin
+php bin/console sightpress:plugin:install form-builder   # add an official plugin
 ```
 
 Turn installed plugins on per site in Admin → Plugins. Remove one with

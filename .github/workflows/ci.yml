@@ -2,7 +2,9 @@ name: CI
 
 # The skeleton holds no product code (CLAUDE.md): its suite checks that the
 # app boots on the released core, the Composer hook, the dev manifest and the
-# Docker files, and the image job builds and smoke-tests the production image.
+# Docker files; the integration job runs it with every official plugin
+# installed, enabled and then disabled; and the image job builds and
+# smoke-tests the production image.
 
 on:
   pull_request:
@@ -51,10 +53,70 @@ jobs:
       - if: always()
         run: docker logs sightpress || true
 
+  # Every official plugin installed from its repository's main branch, with
+  # the suite run twice: every official plugin enabled, then every plugin
+  # disabled (PLAN §3, CLAUDE.md "Commands"). Until the plugin engine (M6),
+  # "enabled" registers each installed plugin's bundle (tests/PluginsEnabledKernel.php).
+  integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        plugins: [enabled, disabled]
+    name: integration (every plugin ${{ matrix.plugins }})
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: skeleton
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: sightpress/sightpress-core
+          path: core
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: sightpress/sightpress-plugin-core
+          path: plugin-core
+      - name: Check out every official plugin
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for id in articles community-helper form-builder newsletter-manager notifications-helper image-finder ai-helper file-importer; do
+            git clone --depth 1 --quiet "https://github.com/sightpress/sightpress-plugin-$id.git" "plugin-$id"
+          done
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.4'
+          extensions: intl, mbstring, sodium
+          coverage: none
+          tools: composer:v2
+      # composer.dev.lock isn't committed, so resolve it first. The hook is a
+      # post-install-cmd (as in create-project), so the install that follows
+      # runs it: it must exit 0 and print the next steps.
+      - name: Install with every official plugin (and run the Composer hook)
+        working-directory: skeleton
+        env:
+          COMPOSER: composer.dev.json
+        run: |
+          set -o pipefail
+          composer update --no-interaction --prefer-dist --no-progress --no-scripts
+          composer install --no-interaction --prefer-dist --no-progress 2>&1 | tee "$RUNNER_TEMP/install.txt"
+          grep -q "SightPress isn't set up yet" "$RUNNER_TEMP/install.txt" || { echo "::error::The Composer hook didn't print the next steps."; exit 1; }
+      - name: The suite with every plugin ${{ matrix.plugins }}
+        working-directory: skeleton
+        env:
+          SIGHTPRESS_TEST_PLUGINS: ${{ matrix.plugins }}
+        run: vendor/bin/phpunit
+      - name: Every official plugin is installed and listed
+        working-directory: skeleton
+        run: |
+          set -o pipefail
+          php bin/console sightpress:plugin:list --no-ansi | tee "$RUNNER_TEMP/plugins.txt"
+          grep -q 'Installed plugins (8):' "$RUNNER_TEMP/plugins.txt" || { echo "::error::Expected the 8 official plugins to be installed."; exit 1; }
+
   # The one required status check for branch protection.
   qa-gate:
     if: always()
-    needs: [pr-title, qa, image]
+    needs: [pr-title, qa, image, integration]
     runs-on: ubuntu-latest
     steps:
       - name: Every required job passed
