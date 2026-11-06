@@ -89,12 +89,17 @@ jobs:
           extensions: intl, mbstring, sodium
           coverage: none
           tools: composer:v2
-      # Installing also runs the Composer hook: it must exit 0 and print the next steps.
+      # composer.dev.lock isn't committed, so resolve it first. The hook is a
+      # post-install-cmd (as in create-project), so the install that follows
+      # runs it: it must exit 0 and print the next steps.
       - name: Install with every official plugin (and run the Composer hook)
         working-directory: skeleton
+        env:
+          COMPOSER: composer.dev.json
         run: |
           set -o pipefail
-          COMPOSER=composer.dev.json composer update --no-interaction --prefer-dist --no-progress 2>&1 | tee "$RUNNER_TEMP/install.txt"
+          composer update --no-interaction --prefer-dist --no-progress --no-scripts
+          composer install --no-interaction --prefer-dist --no-progress 2>&1 | tee "$RUNNER_TEMP/install.txt"
           grep -q "SightPress isn't set up yet" "$RUNNER_TEMP/install.txt" || { echo "::error::The Composer hook didn't print the next steps."; exit 1; }
       - name: The suite with every plugin ${{ matrix.plugins }}
         working-directory: skeleton
